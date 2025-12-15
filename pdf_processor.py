@@ -88,13 +88,25 @@ class PDFProcessor:
         """
         Converts PDF to images and runs OCR on them.
         """
+        # Check available languages once
+        try:
+             langs = pytesseract.get_languages()
+             if 'jpn' not in langs and 'jpn_vert' not in langs:
+                 raise RuntimeError("Japanese language data ('jpn') for Tesseract is not installed.\nPlease run the Tesseract installer again and select 'Japanese' in 'Additional script data'.")
+        except Exception as e:
+             # If we can't check langs, we proceed but log warning, unless it was the runtime error we just raised
+             if "Japanese language data" in str(e):
+                 raise e
+             logging.warning(f"Could not check installed languages: {e}")
+
         text_content = []
         try:
             # We explicitly pass poppler_path here if set
             images = pdf2image.convert_from_path(file_path, poppler_path=self.poppler_path)
             for i, image in enumerate(images):
                 logging.info(f"OCR processing page {i+1}...")
-                page_text = pytesseract.image_to_string(image, lang='eng+jpn') 
+                # Prioritize Japanese: jpn+eng
+                page_text = pytesseract.image_to_string(image, lang='jpn+eng') 
                 text_content.append(f"--- Page {i+1} ---\n{page_text}")
         except Exception as e:
             logging.error(f"OCR failed: {e}")
